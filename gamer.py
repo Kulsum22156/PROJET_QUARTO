@@ -11,7 +11,7 @@ import json
 import time
 import random
 
-host = "172.17.10.133"
+host = "192.168.129.205"
 port = 3000
 inscription= {
   "request": "subscribe",
@@ -79,8 +79,8 @@ def piece_adversaire():
     for i in pieces_quarto():
         if i not in pieces_utilisees():
             piece_possible.append(i)
-            piece_donne=random.choice(piece_possible) #utilise random pour choisir une piece aléatoirement pour l'adversaire parmis les pieces possible
-    return piece_donne
+          
+    return random.choice(piece_possible) #utilise random pour choisir une piece aléatoirement pour l'adversaire parmis les pieces possible
 
 
 # Crée un fonction qui rgd les cases vides et qui me donne la position(dmd prof) ou le numero de la case vide
@@ -99,25 +99,32 @@ def cases_voisines():
 # Crée une fonction qui va créer le dictionnaire json du move
 def move_joue():
     move = {"case": cases_vides() , "piece": piece_adversaire()}
-    return move
+    texto = ["move envoyé", "move genéré", "coup envoyé", "coup genéré", "à ton tour", "let's go ma star"]
+    texto_ale = random.choice(texto)
+    return {"response" : "move", "move":move, "message" : texto_ale}
 
 
 while True:
     print("en attente")
     connexion, adresse = s2.accept()
     print("Connecté avec:", adresse)
-
     ping = connexion.recv(1024).decode()
-    print(" message reçu:",ping)
+    print(" message reçu:",ping) #j'ai mis ping car au moment du coadage de ce texte je travaillais sur l'inscription mais ping ici fait reference uniquement au a la dmd du server
     #ping_json=json.loads(ping)
     if len(ping)>0:
     #if ping_json.get("request")=="pong":
         try:
-            message = json.loads(ping)
+            message = json.loads(ping) #load la request du server
             if message.get("request")=="ping":
                 reponse = {"response":"pong"}
                 connexion.send((json.dumps(reponse)).encode())
                 print("pong envoyé")
+
+            elif message.get("request")=="play":
+                state = message["state"]
+                reponse=move_joue()
+                connexion.send((json.dumps(reponse)).encode())
+                print("coup joué: ", reponse)
 
 
         except:
