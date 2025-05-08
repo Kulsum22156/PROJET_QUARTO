@@ -11,13 +11,13 @@ import json
 import time
 import random
 
-host = "192.168.129.205"
+host = "172.17.10.133"
 port = 3000
 inscription= {
   "request": "subscribe",
-  "port": 8888,
-  "name": "PLATO",
-  "matricules": ["22156"]
+  "port": 7777,
+  "name": "PLATO_12",
+  "matricules": ["22000"]
 }
 
 # INSCRIPTION
@@ -33,7 +33,7 @@ s.close()
 
 s2=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #s2.connect(("192.168.129.205", 3000 )) #en faisant connecte on se remet en mode client ou on dmd de se connecter, or on veut recevoir qlqch, on veut etre le serveur mnt donc utilise;
-s2.bind(("0.0.0.0",8888)) #notre port ou on va recevoir les dmd mais npt quel ip de client
+s2.bind(("0.0.0.0",7777)) #notre port ou on va recevoir les dmd mais npt quel ip de client
 s2.listen(1)
 
 #message reçu
@@ -79,6 +79,8 @@ def piece_adversaire():
     for i in pieces_quarto():
         if i not in pieces_utilisees():
             piece_possible.append(i)
+            """  else:
+            print("plus de pieces a donner") """
           
     return random.choice(piece_possible) #utilise random pour choisir une piece aléatoirement pour l'adversaire parmis les pieces possible
 
@@ -90,16 +92,64 @@ def cases_vides():
         if case is None:
             vide.append(i)
     return vide
+
+def case_joue():
+    if len(cases_vides()) > 0:
+        case_choisis=random.choice(cases_vides())
+        return case_choisis
+    else:
+        pass
+    #nb ligne x4+ nb colonne pour fait de coord a nombre
+    #//4 pour ligne puis %4 pour colonne
         
+def case_a_parcourir():
+    case=cases_vides()
+    for position in case:
+        return case
+    return case
 
 # Crée une fonction qui rgd les cases voisines pour jouer la meilleure piece et qui rgd l'ensbmle du plato pour jouer sa piece
 def cases_voisines():
-    pass
+    plateau=state["board"]
+    for position in cases_vides():
+        #transfome en coord
+        ligne = position//4
+        colonne =position%4
+        voisine =[]
+    for dx in [-1,0,1]: #parcours les voisines sur la meme ligne
+        for dy in [-1,0,1]: #parcours les voisines sur la meme colonne
+            if dx !=0 and dy != 0: #exclu la case sur laquelle on est
+                x = ligne +dx #pour avancer sur la ligne
+                y = colonne +dy #pour avancer sur la colonne
+                if 0 <= x < 4 and 0 <= y < 4: #limite du plateau
+                    case = x * 4 + y #passe de coord a numero de case
+                    piece = plateau[case] #ajt la valeur de la case dans une variable pour rgd sa valeur (un par un) et puis si elle n'est pas none, l'ajoute dans la liste voisines
+                    if piece is not None:
+                        voisine.append(piece)
+        if len(voisine) > 2:#pour comparer faut min 2pieces, logique, on va comparer un par un les caractérisque du str qui def les pieces
+            for i in range(4):
+                piece_caractere = voisine[0][i]
+                meme_caractere=True 
+                for position in voisine[1:]:
+                    if position[i] != piece_caractere:
+                        meme_caractere=False
+
+                    elif meme_caractere:
+                        return position
+            
+                    else:
+                        return case_joue()
+        else:
+            return case_joue()
+                    
+    assert False, "on devrait pas arriver ici"
+
+
 
 # Crée une fonction qui va créer le dictionnaire json du move
 def move_joue():
-    move = {"case": cases_vides() , "piece": piece_adversaire()}
-    texto = ["move envoyé", "move genéré", "coup envoyé", "coup genéré", "à ton tour", "let's go ma star"]
+    move = {"pos": cases_voisines(), "piece": piece_adversaire()}
+    texto = ["move envoyé", "move genéré", "coup envoyé", "coup genéré", "à ton tour princesse", "let's go ma star", "case sélectionné", "à ton tour bichette"]
     texto_ale = random.choice(texto)
     return {"response" : "move", "move":move, "message" : texto_ale}
 
@@ -127,7 +177,7 @@ while True:
                 print("coup joué: ", reponse)
 
 
-        except:
+        except json.JSONDecodeError: #spécifie l'erreur qu'on ne veut pas et si a autre chose comme erreur, va l'afficher "précisément" dans le terminal
             print("erreur json")
 
 
