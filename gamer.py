@@ -1,10 +1,6 @@
-#1socket pour 'inscription et un pour envoie message
-#separer inscription (client nous serveur le gestionnaire: gesti reond anotre dmd) et le jeu (client lui; il envoie des dmd a nous)
-#inscrition (local host piur le moment, port du gestonnaire de partie)
-# port inscrip = port d'ecoute 
 
 
-# CONFIGURATION
+#-----CONFIGURATION-----
 
 import socket
 import json
@@ -17,37 +13,32 @@ inscription= {
   "request": "subscribe",
   "port": 7777,
   "name": "PLATO_12",
-  "matricules": ["22000"]
+  "matricules": ["22156"]
 }
 
-# INSCRIPTION
+#-----INSCRIPTION-----
 
 s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((host, port))
+s.connect((host, port)) #en faisant connect on se remet en mode client où on dmd de se connecter
 s.sendall((json.dumps(inscription)+ "\n").encode())
 message =s.recv(1024).decode()
 print("Serveur: ", message)
 s.close()
 
-# PING
-
 s2=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#s2.connect(("192.168.129.205", 3000 )) #en faisant connecte on se remet en mode client ou on dmd de se connecter, or on veut recevoir qlqch, on veut etre le serveur mnt donc utilise;
-s2.bind(("0.0.0.0",7777)) #notre port ou on va recevoir les dmd mais npt quel ip de client
+s2.bind(("0.0.0.0",7777)) #notre port où on va recevoir les demandes mais de npt quel ip de client
 s2.listen(1)
-
-#message reçu
 
 time.sleep(1)
 
-# PONG ; doit repondre a tous les pings, donc fait une boucle, pas besoin de break car doit repondre a tout a tt instant
-#dans cette boucle faut mettre la request pley aussi
-#le server enverra soit une requete ping ou une requete play, mais pas en meme temps donc pndt que ca n'envoie pas de ping, ca enverra un play et faut un code pour les deux dans la boucle prcq ca envoie npt de quand
 
-# Crée une fonction qui genère un ensemble de toutes les pièces du jeu
+
+#-----LES FONCTIONS-----
+
+# Crée une fonction qui genère un ensemble de toutes les pièces du jeu :
 def pieces_quarto():
 
-    liste_pieces = []
+    liste_pieces = [] #création d'une liste vide dans laquelle on va venir ajouter toutes les pièces du jeu
     for taille in ["B","S"]:
         for couleur in ["D","L"]:
             for concavite in ["E","F"]:
@@ -56,110 +47,113 @@ def pieces_quarto():
 
     return set(liste_pieces)
 
-# Crée une fonction qui crée une liste des pieces deja utilisée ; parcours board pour les pieces a ajt enplus et ajt la piece a jouer 
-def pieces_utilisees():
-    pieces_prises = []
 
-    #1. parcourir board et ajt les pieces qui n'y sont pas deja
+# Crée une fonction qui crée une liste des pieces deja utilisée ; parcours board pour les pièces à ajouter en plus et ajouter la pièce à jouer (pièce donnée par l'adversaire) :
+def pieces_utilisees():
+
+    pieces_prises = [] #création d'une liste vide dans laquelle on va venir ajouter toutes les pièces déjà joué, et donc qu'on ne pourra pas jouer
+
+    #1. parcourir board et ajouter les pièces qui n'y sont pas déjà
     for piece in state["board"]:
-        if piece is not None:
-            if piece not in pieces_prises :
+        if piece is not None: #vérifie si la case contient une pièce
+            if piece not in pieces_prises : #vérifie si la case n'est pas déjà dans la liste des pièces prises, si non on ajoute dans la liste
                  pieces_prises.append(piece)
 
-    #2. ajt la piece que l'adv m'a donné
-    if state['piece'] is not None:
-        if state["piece"] not in pieces_prises:
+    #2. ajouter la pièce que l'adversaire m'a donné
+    if state['piece'] is not None: #vérifie si on a bien une pièce à jouer 
+        if state["piece"] not in pieces_prises: #vérifie si la pièce ne se situe pas déjà dans la liste, si non l'ajoute dans cette liste
             pieces_prises.append(state["piece"])
 
-    return set(pieces_prises)
+    return set(pieces_prises) #fais un set() pour être sûr qu'il n'y a pas de doublons
 
-# Crée une focntion qui joue donne une peice a l'adv qui n'est pas dans pieces_utilisees() pour eviter le badmove
+
+# Crée une fonction qui donne une pièce à l'adversaire qui n'est pas dans pieces_utilisees() pour éviter le badmove
 def piece_adversaire():
-    piece_possible = []
-    for i in pieces_quarto():
+
+    piece_possible = [] #création d'une liste vide dans laquelle on va venir ajouter les pièces qu'on peut donner à l'adversaire
+    for i in pieces_quarto(): #pour l'ensemble des pièces du jeu, si ces pièce ne se situent pas dans pieces_utilisees(), et donc qu'elles peuvent être jouées, on les ajoute à notre liste piece_possible
         if i not in pieces_utilisees():
             piece_possible.append(i)
-            """  else:
-            print("plus de pieces a donner") """
           
-    return random.choice(piece_possible) #utilise random pour choisir une piece aléatoirement pour l'adversaire parmis les pieces possible
+    return random.choice(piece_possible) #utilise random pour choisir une pièce aléatoirement pour l'adversaire, parmis les pièces possible
 
 
-# Crée un fonction qui rgd les cases vides et qui me donne la position(dmd prof) ou le numero de la case vide
+# Crée un fonction qui regarde les cases vides et qui me donne la position ou le numero de la case vide
 def cases_vides():
-    vide=[]
-    for i, case in enumerate(state["board"]):
-        if case is None:
+
+    vide=[] #création d'une liste vide dans laquelle on va venir ajouter les cases vides
+    for i, case in enumerate(state["board"]): #parcours board
+        if case is None: #si la case est vide, l'ajoute à la liste
             vide.append(i)
     return vide
 
+
+# Crée une fonction qui sélectionne aléatoirement une case 
 def case_joue():
-    if len(cases_vides()) > 0:
-        case_choisis=random.choice(cases_vides())
-        return case_choisis
+    if len(cases_vides()) > 0: #si y a au moins une case vide, alors choisis aléatoirement
+        case_choisie=random.choice(cases_vides())
+        return case_choisie
     else:
         pass
-    #nb ligne x4+ nb colonne pour fait de coord a nombre
-    #//4 pour ligne puis %4 pour colonne
-        
-def case_a_parcourir():
-    case=cases_vides()
-    for position in case:
-        return case
-    return case
 
-# Crée une fonction qui rgd les cases voisines pour jouer la meilleure piece et qui rgd l'ensbmle du plato pour jouer sa piece
+
+# Crée une fonction qui regarde les cases voisines pour jouer la meilleure pièce, en parcourant tout le plateau/board
 def cases_voisines():
-    plateau=state["board"]
+
+    plateau=state["board"] 
     for position in cases_vides():
-        #transfome en coord
-        ligne = position//4
-        colonne =position%4
-        voisine =[]
-    for dx in [-1,0,1]: #parcours les voisines sur la meme ligne
-        for dy in [-1,0,1]: #parcours les voisines sur la meme colonne
-            if dx !=0 and dy != 0: #exclu la case sur laquelle on est
-                x = ligne +dx #pour avancer sur la ligne
-                y = colonne +dy #pour avancer sur la colonne
-                if 0 <= x < 4 and 0 <= y < 4: #limite du plateau
-                    case = x * 4 + y #passe de coord a numero de case
-                    piece = plateau[case] #ajt la valeur de la case dans une variable pour rgd sa valeur (un par un) et puis si elle n'est pas none, l'ajoute dans la liste voisines
-                    if piece is not None:
-                        voisine.append(piece)
-        if len(voisine) > 2:#pour comparer faut min 2pieces, logique, on va comparer un par un les caractérisque du str qui def les pieces
-            for i in range(4):
-                piece_caractere = voisine[0][i]
-                meme_caractere=True 
-                for position in voisine[1:]:
-                    if position[i] != piece_caractere:
-                        meme_caractere=False
+        #transfome numéro de la case en coordonnées
+        ligne = position//4 #prend le numéro de la case (= position) et divise par 4 (car plateau quarto 4x4) pour obtenir la ligne 
+        colonne =position%4 #prend le numéro de la case (= position) et fais le modulo de 4, le reste nous donne la colonne de la case
+        voisine =[] 
+        for dx in [-1,0,1]: #parcours les voisines sur la même ligne
+            for dy in [-1,0,1]: #parcours les voisines sur la même colonne
+                if dx !=0 or dy != 0: #exclu la case sur laquelle on est
+                    x = ligne +dx #pour avancer sur la ligne
+                    y = colonne +dy #pour avancer sur la colonne
+                    if 0 <= x < 4 and 0 <= y < 4: #limite du plateau
+                        case = x * 4 + y #passe de coordonnées à numéro de case
+                        piece = plateau[case] #ajout de la valeur de la case dans une variable pour regarder sa valeur (un par un) et puis si elle n'est pas none, l'ajoute dans la liste voisines
+                        if piece is not None:
+                            voisine.append(piece)
+            if len(voisine) >= 2:#pour comparer faut min 2pièces, logique, on va comparer un par un les caractéristiques du str qui défini les pièces
+                for i in range(4): #car 4caractères pour une pièce
+                    piece_caractere = voisine[0][i] #prend la 1ère pièce comme réference
+                    meme_caractere=True 
+                    for position in voisine[1:]: #compare avec les autres voisines
+                        if position[i] != piece_caractere:
+                            meme_caractere=False #si différente, alors devient False
 
-                    elif meme_caractere:
-                        return position
-            
-                    else:
-                        return case_joue()
-        else:
-            return case_joue()
+                        elif meme_caractere:#si meme caractère
+                            return position 
+                
+                        else:
+                            return case_joue() #donne une case au hasard si les deux autres conditions ne sont pas vérifiées
+            else:
+                return case_joue() #donne une case au hasard si la liste voisine ne contient pas au moins 2 cases
                     
-    assert False, "on devrait pas arriver ici"
-
+    assert False, "on devrait pas arriver ici" #ne devrait jamais exécuter cette ligne
 
 
 # Crée une fonction qui va créer le dictionnaire json du move
 def move_joue():
-    move = {"pos": cases_voisines(), "piece": piece_adversaire()}
-    texto = ["move envoyé", "move genéré", "coup envoyé", "coup genéré", "à ton tour princesse", "let's go ma star", "case sélectionné", "à ton tour bichette"]
-    texto_ale = random.choice(texto)
-    return {"response" : "move", "move":move, "message" : texto_ale}
+
+    move = {"pos": cases_voisines(), "piece": piece_adversaire()} #dictionnaire de réponse du move reprenant la case jouée ainsi que la pièce à donne à l'adversaire
+    texto = ["move envoyé", "coup genéré", "à ton tour princesse", "let's go ma star", "à ton tour bichette", "(┬┬﹏┬┬)","miaou ᓚᘏᗢ",":-P",">:(","(～￣▽￣)~","(✿◡‿◡)","(*￣3￣)╭","(⌐■_■)","(￣y▽,￣)╭","( ͡~ ͜ʖ ͡°)","╰（‵□′）╯","┌( ಠ_ಠ)┘"]
+    texto_ale = random.choice(texto) #génère aléatoirement un message parmis les messages de la liste texto
+    return {"response" : "move", "move":move, "message" : texto_ale} #dictionnaire de réponse à play reprenant la réponse "move", le move joué et le message
 
 
+
+#-----BOUCLE-----
+
+#Cette boucle n'a pas de break, on l'éxécute sans cesse puisqu'on reçoit soit une requette ping auquel on répond pong, soit un play auquel on repond grâce à la fonction move_jou() juste au dessus
 while True:
-    print("en attente")
+    print("\033[35mEn attente d'une requette\033[0m") #ajout de couleur pour les prints pour une meilleure lisibilité dans le terminal
     connexion, adresse = s2.accept()
-    print("Connecté avec:", adresse)
+    print("\033[35mConnecté avec: \033[0m", adresse)
     ping = connexion.recv(1024).decode()
-    print(" message reçu:",ping) #j'ai mis ping car au moment du coadage de ce texte je travaillais sur l'inscription mais ping ici fait reference uniquement au a la dmd du server
+    print("\033[35mMessage reçu: \033[0m",ping) #j'ai mis ping car au moment du coadage de ce texte je travaillais sur l'inscription mais ping ici fait reference uniquement au a la dmd du server
     #ping_json=json.loads(ping)
     if len(ping)>0:
     #if ping_json.get("request")=="pong":
@@ -168,20 +162,21 @@ while True:
             if message.get("request")=="ping":
                 reponse = {"response":"pong"}
                 connexion.send((json.dumps(reponse)).encode())
-                print("pong envoyé")
+                print("\033[33mPong envoyé\033[0m")
 
             elif message.get("request")=="play":
                 state = message["state"]
                 reponse=move_joue()
                 connexion.send((json.dumps(reponse)).encode())
-                print("coup joué: ", reponse)
+                print("\033[33mCoup joué: \033[0m", reponse)
 
 
-        except json.JSONDecodeError: #spécifie l'erreur qu'on ne veut pas et si a autre chose comme erreur, va l'afficher "précisément" dans le terminal
-            print("erreur json")
+        except json.JSONDecodeError: #spécifie l'erreur qu'on ne veut pas et si en a une autre, va l'afficher "précisément" dans le terminal
+            print("\033[31mErreur json\033[0m")
 
 
 
+#-----FERMETURE-----
 connexion.close()
 s2.close() 
 
