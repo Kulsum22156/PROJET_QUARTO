@@ -7,23 +7,23 @@ import json
 import time
 import random
 
-host = "172.17.10.133"
-port = 3000
+host = "192.168.129.205" #adresse IP du serveur 
+port = 3000 #port du serveur
 inscription= {
   "request": "subscribe",
   "port": 7777,
   "name": "PLATO_12",
   "matricules": ["22156"]
-}
+} #messag d'inscription qu'on va envoier pour s'inscrire
 
 #-----INSCRIPTION-----
 
 s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host, port)) #en faisant connect on se remet en mode client où on dmd de se connecter
-s.sendall((json.dumps(inscription)+ "\n").encode())
-message =s.recv(1024).decode()
-print("Serveur: ", message)
-s.close()
+s.sendall((json.dumps(inscription)+ "\n").encode()) #envoie le message d'inscription
+message =s.recv(1024).decode() #décode le message json reçu
+print("Serveur: ", message) #affiche le message reçu
+s.close() #ferme le socket
 
 s2=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s2.bind(("0.0.0.0",7777)) #notre port où on va recevoir les demandes mais de npt quel ip de client
@@ -48,7 +48,7 @@ def pieces_quarto():
     return set(liste_pieces)
 
 
-# Crée une fonction qui crée une liste des pieces deja utilisée ; parcours board pour les pièces à ajouter en plus et ajouter la pièce à jouer (pièce donnée par l'adversaire) :
+# Crée une fonction qui crée une liste des pieces deja utilisée ; parcours board pour les pièces à ajouter et ajoute la pièce à jouer (pièce donnée par l'adversaire) :
 def pieces_utilisees():
 
     pieces_prises = [] #création d'une liste vide dans laquelle on va venir ajouter toutes les pièces déjà joué, et donc qu'on ne pourra pas jouer
@@ -67,6 +67,7 @@ def pieces_utilisees():
     return set(pieces_prises) #fais un set() pour être sûr qu'il n'y a pas de doublons
 
 
+
 # Crée une fonction qui donne une pièce à l'adversaire qui n'est pas dans pieces_utilisees() pour éviter le badmove
 def piece_adversaire():
 
@@ -75,7 +76,24 @@ def piece_adversaire():
         if i not in pieces_utilisees():
             piece_possible.append(i)
           
-    return random.choice(piece_possible) #utilise random pour choisir une pièce aléatoirement pour l'adversaire, parmis les pièces possible
+    pieces_safe=[] #crée une liste ou on va venir ajouter les pièces qui ne vont pas permettre à l'adversaire de gagner
+    plateau=state["board"]
+    for piece in piece_possible: 
+        risque=False #configure risque comme si y a pas de risque au début
+        for i in range(4): #4 car 4 caractères possible pour la pièce
+            meme_caract=0
+            for position in plateau:
+                if position is not None and position[i]==piece[i]: #si la case n'est pas vide et si le caractère est le même pour les deux pièces
+                    meme_caract+=1 #ajoute un point car même caractère
+            if meme_caract >=3: #si on a 3 ou plus de caractèristiques similaire, on a un risque sur cette pièce de laisser l'adversaire gagner ; cette pièce ne sera pas donnée
+                risque=True
+        if not risque:
+            pieces_safe.append(piece) #si y a aucun risque, on ajoute la pièce dans notre liste; elle pourra être donnée à l'adversaire
+    if pieces_safe:
+        return random.choice(pieces_safe) #si on a des pièces safe dans la liste, alors donne une pièce de cette liste
+    else:
+        return random.choice(piece_possible) #si on n'a pas de pièce dans le liste, alors donne une pièce au hasard parmis les pièces possibles
+        
 
 
 # Crée un fonction qui regarde les cases vides et qui me donne la position ou le numero de la case vide
@@ -97,15 +115,18 @@ def case_joue():
         pass
 
 
-# Crée une fonction qui regarde les cases voisines pour jouer la meilleure pièce, en parcourant tout le plateau/board
+# Crée une fonction qui regarde les cases voisines pour jouer la meilleure case, en parcourant tout le plateau/board
 def cases_voisines():
 
     plateau=state["board"] 
+    meilleure_piece=-1 #ici on initialise une variable à -1 pour que lorsqu'on trouve une pièce qui a plus de points en communs qu'elle, sa valeur se met à jour 
+    meilleure_case=[]
     for position in cases_vides():
         #transfome numéro de la case en coordonnées
         ligne = position//4 #prend le numéro de la case (= position) et divise par 4 (car plateau quarto 4x4) pour obtenir la ligne 
         colonne =position%4 #prend le numéro de la case (= position) et fais le modulo de 4, le reste nous donne la colonne de la case
         voisine =[] 
+
         for dx in [-1,0,1]: #parcours les voisines sur la même ligne
             for dy in [-1,0,1]: #parcours les voisines sur la même colonne
                 if dx !=0 or dy != 0: #exclu la case sur laquelle on est
@@ -116,21 +137,29 @@ def cases_voisines():
                         piece = plateau[case] #ajout de la valeur de la case dans une variable pour regarder sa valeur (un par un) et puis si elle n'est pas none, l'ajoute dans la liste voisines
                         if piece is not None:
                             voisine.append(piece)
+
+            points_communs=0                
             if len(voisine) >= 2:#pour comparer faut min 2pièces, logique, on va comparer un par un les caractéristiques du str qui défini les pièces
                 for i in range(4): #car 4caractères pour une pièce
                     piece_caractere = voisine[0][i] #prend la 1ère pièce comme réference
                     meme_caractere=True 
-                    for position in voisine[1:]: #compare avec les autres voisines
-                        if position[i] != piece_caractere:
-                            meme_caractere=False #si différente, alors devient False
-
-                        elif meme_caractere:#si meme caractère
-                            return position 
+                    for pos in voisine[1:]: #compare avec les autres voisines
+                        if pos[i] != piece_caractere:
+                            meme_caractere=False #si différente, alors devient False 
+                        elif meme_caractere:#si meme caractère, ajoute un point en commun à points_communs
+                            points_communs += 1 
                 
-                        else:
-                            return case_joue() #donne une case au hasard si les deux autres conditions ne sont pas vérifiées
-            else:
-                return case_joue() #donne une case au hasard si la liste voisine ne contient pas au moins 2 cases
+           
+            if points_communs > meilleure_piece: #si la pièce a plus de points en communs que la valeur de meilleur_piece, elle se met à jour;
+                meilleure_piece = points_communs #mis à jour du nombre de points en communs
+                meilleure_case = [position] #mis à jour de la meilleure case à jouer
+                
+            elif points_communs==meilleure_piece:
+                meilleure_case.append(position)
+    if meilleure_case:
+        return random.choice(meilleure_case)
+    else:
+        return case_joue()
                     
     assert False, "on devrait pas arriver ici" #ne devrait jamais exécuter cette ligne
 
@@ -139,7 +168,7 @@ def cases_voisines():
 def move_joue():
 
     move = {"pos": cases_voisines(), "piece": piece_adversaire()} #dictionnaire de réponse du move reprenant la case jouée ainsi que la pièce à donne à l'adversaire
-    texto = ["move envoyé", "coup genéré", "à ton tour princesse", "let's go ma star", "à ton tour bichette", "(┬┬﹏┬┬)","miaou ᓚᘏᗢ",":-P",">:(","(～￣▽￣)~","(✿◡‿◡)","(*￣3￣)╭","(⌐■_■)","(￣y▽,￣)╭","( ͡~ ͜ʖ ͡°)","╰（‵□′）╯","┌( ಠ_ಠ)┘"]
+    texto = ["move envoyé", "coup genéré", "à ton tour princesse", "let's go ma star", "à ton tour bichette","miaou ᓚᘏᗢ","<33",":-P",">:(","(*^3^)r"]
     texto_ale = random.choice(texto) #génère aléatoirement un message parmis les messages de la liste texto
     return {"response" : "move", "move":move, "message" : texto_ale} #dictionnaire de réponse à play reprenant la réponse "move", le move joué et le message
 
