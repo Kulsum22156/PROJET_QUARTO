@@ -26,7 +26,7 @@ print("Serveur: ", message) #affiche le message reçu
 s.close() #ferme le socket
 
 s2=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s2.bind(("0.0.0.0",7777)) #notre port où on va recevoir les demandes mais de npt quel ip de client
+s2.bind(("0.0.0.0",7777)) #notre port où on va recevoir les demandes 
 s2.listen(1)
 
 time.sleep(1)
@@ -139,7 +139,7 @@ def cases_voisines():
                             voisine.append(piece)
 
             points_communs=0                
-            if len(voisine) >= 2:#pour comparer faut min 2pièces, logique, on va comparer un par un les caractéristiques du str qui défini les pièces
+            if len(voisine) >= 2:#pour comparer faut min 2 pièces, logique, on va comparer un par un les caractéristiques du str qui défini les pièces
                 for i in range(4): #car 4caractères pour une pièce
                     piece_caractere = voisine[0][i] #prend la 1ère pièce comme réference
                     meme_caractere=True 
@@ -176,9 +176,9 @@ def move_joue():
 
 #-----BOUCLE-----
 
-#Cette boucle n'a pas de break, on l'éxécute sans cesse puisqu'on reçoit soit une requette ping auquel on répond pong, soit un play auquel on repond grâce à la fonction move_jou() juste au dessus
+#Cette boucle n'a pas de break, on l'éxécute sans cesse puisqu'on reçoit soit une requête ping auquel on répond pong, soit un play auquel on repond grâce à la fonction move_jou() juste au dessus
 while True:
-    print("\033[35mEn attente d'une requette\033[0m") #ajout de couleur pour les prints pour une meilleure lisibilité dans le terminal
+    print("\033[35mEn attente d'une requête\033[0m") #ajout de couleur pour les prints pour une meilleure lisibilité dans le terminal
     connexion, adresse = s2.accept()
     print("\033[35mConnecté avec: \033[0m", adresse)
     ping = connexion.recv(1024).decode()
